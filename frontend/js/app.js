@@ -135,11 +135,16 @@ class GapSightApp {
 
     setLoading(isLoading) {
         const btn = document.getElementById('search-btn');
+        const spinner = btn.querySelector('.btn-spinner');
+        const btnText = btn.querySelector('.btn-text');
+        
         if (isLoading) {
-            btn.classList.add('loading');
+            spinner.classList.remove('hidden');
+            btnText.textContent = '分析中...';
             btn.disabled = true;
         } else {
-            btn.classList.remove('loading');
+            spinner.classList.add('hidden');
+            btnText.textContent = '开始分析';
             btn.disabled = false;
         }
     }
@@ -201,7 +206,7 @@ class GapSightApp {
         } else {
             document.getElementById('graph-3d').classList.add('hidden');
             document.getElementById('graph-2d').classList.remove('hidden');
-            this.render2DGraph();
+            setTimeout(() => this.render2DGraph(), 50);
         }
     }
 
@@ -253,18 +258,27 @@ class GapSightApp {
     }
 
     render2DGraph() {
+        const viewport = document.getElementById('graph-2d');
         const container = document.getElementById('svg-2d');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
+        
+        let width = viewport.clientWidth || 800;
+        let height = viewport.clientHeight || 600;
+        
+        if (width < 100) width = 800;
+        if (height < 100) height = 600;
 
         d3.select(container).selectAll('*').remove();
 
         const svg = d3.select(container)
+            .attr('width', width)
+            .attr('height', height)
             .attr('viewBox', [0, 0, width, height]);
 
         const nodes = this.currentData.nodes.map(n => ({
             ...n,
-            name: n.label
+            name: n.label,
+            x: Math.random() * width,
+            y: Math.random() * height
         }));
 
         const links = this.currentData.edges.map(e => ({
@@ -277,63 +291,70 @@ class GapSightApp {
         ];
 
         const simulation = d3.forceSimulation(nodes)
-            .force('link', d3.forceLink(links).id(d => d.id).distance(80))
-            .force('charge', d3.forceManyBody().strength(-300))
+            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-250))
             .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(d => d.size + 5));
+            .force('collision', d3.forceCollide().radius(d => (d.size || 10) + 8));
 
         const link = svg.append('g')
+            .attr('class', 'links')
             .selectAll('line')
             .data(links)
             .join('line')
-            .attr('stroke', l => l.is_gap ? '#f59e0b' : 'rgba(100, 116, 139, 0.5)')
+            .attr('stroke', l => l.is_gap ? '#f59e0b' : 'rgba(100, 116, 139, 0.6)')
             .attr('stroke-width', l => l.is_gap ? 3 : Math.max(1, Math.log1p(l.weight) * 0.8))
-            .attr('stroke-opacity', l => l.is_gap ? 1 : 0.4);
+            .attr('stroke-opacity', l => l.is_gap ? 1 : 0.5)
+            .attr('stroke-dasharray', l => l.is_gap ? '8,4' : 'none')
+            .style('cursor', l => l.is_gap ? 'pointer' : 'default');
 
         const node = svg.append('g')
+            .attr('class', 'nodes')
             .selectAll('circle')
             .data(nodes)
             .join('circle')
-            .attr('r', d => d.size)
+            .attr('r', d => d.size || 10)
             .attr('fill', d => groupColors[d.group % groupColors.length])
             .attr('stroke', '#fff')
-            .attr('stroke-width', 1)
+            .attr('stroke-width', 1.5)
+            .style('cursor', 'pointer')
             .call(this.drag(simulation))
             .on('click', (event, d) => this.showNodeDetails(d))
             .on('mouseenter', function(event, d) {
-                d3.select(this).attr('stroke', '#f59e0b').attr('stroke-width', 2);
+                d3.select(this).attr('stroke', '#f59e0b').attr('stroke-width', 3);
             })
             .on('mouseleave', function(event, d) {
-                d3.select(this).attr('stroke', '#fff').attr('stroke-width', 1);
+                d3.select(this).attr('stroke', '#fff').attr('stroke-width', 1.5);
             });
 
         const labels = svg.append('g')
+            .attr('class', 'labels')
             .selectAll('text')
             .data(nodes)
             .join('text')
-            .text(d => d.name.length > 15 ? d.name.substring(0, 12) + '...' : d.name)
-            .attr('font-size', '10px')
-            .attr('fill', '#94a3b8')
+            .text(d => d.name.length > 12 ? d.name.substring(0, 10) + '...' : d.name)
+            .attr('font-size', '11px')
+            .attr('fill', '#e2e8f0')
             .attr('text-anchor', 'middle')
-            .attr('pointer-events', 'none');
+            .attr('pointer-events', 'none')
+            .attr('font-weight', '500');
 
         simulation.on('tick', () => {
             link
-                .attr('x1', d => d.source.x)
-                .attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x)
-                .attr('y2', d => d.target.y);
+                .attr('x1', d => d.source.x || 0)
+                .attr('y1', d => d.source.y || 0)
+                .attr('x2', d => d.target.x || 0)
+                .attr('y2', d => d.target.y || 0);
 
             node
-                .attr('cx', d => d.x)
-                .attr('cy', d => d.y);
+                .attr('cx', d => d.x || 0)
+                .attr('cy', d => d.y || 0);
 
             labels
-                .attr('x', d => d.x)
-                .attr('y', d => d.y - d.size - 5);
+                .attr('x', d => d.x || 0)
+                .attr('y', d => (d.y || 0) - (d.size || 10) - 6);
         });
 
-        this.graph2D = { simulation, node, link, labels, svg };
+        this.graph2D = { simulation, node, link, labels, svg, width, height };
     }
 
     drag(simulation) {
@@ -495,7 +516,9 @@ class GapSightApp {
     zoomIn() {
         if (this.currentVizMode === '3d' && this.graph3D) {
             const currentZoom = this.graph3D.zoom();
-            this.graph3D.zoom(currentZoom * 1.3, 400);
+            const newZoom = Math.min(currentZoom * 1.4, 5);
+            this.graph3D.zoom(newZoom, 300);
+            this.showToast(`放大: ${(newZoom * 100).toFixed(0)}%`);
         } else if (this.graph2D) {
             this.showToast('2D 模式请使用鼠标滚轮缩放');
         }
@@ -504,13 +527,16 @@ class GapSightApp {
     zoomOut() {
         if (this.currentVizMode === '3d' && this.graph3D) {
             const currentZoom = this.graph3D.zoom();
-            this.graph3D.zoom(currentZoom * 0.7, 400);
+            const newZoom = Math.max(currentZoom * 0.7, 0.1);
+            this.graph3D.zoom(newZoom, 300);
+            this.showToast(`缩小: ${(newZoom * 100).toFixed(0)}%`);
         }
     }
 
     resetView() {
         if (this.currentVizMode === '3d' && this.graph3D) {
-            this.graph3D.zoomToFit(400);
+            this.graph3D.zoomToFit(400, 40);
+            this.showToast('视图已重置');
         }
     }
 
