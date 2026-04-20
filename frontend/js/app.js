@@ -514,26 +514,64 @@ class GapSightApp {
     }
 
     zoomIn() {
+        if (!this.graph3D && !this.graph2D) {
+            this.showToast('请先搜索并生成图表');
+            return;
+        }
+
         if (this.currentVizMode === '3d' && this.graph3D) {
-            const currentZoom = this.graph3D.zoom();
-            const newZoom = Math.min(currentZoom * 1.4, 5);
-            this.graph3D.zoom(newZoom, 300);
-            this.showToast(`放大: ${(newZoom * 100).toFixed(0)}%`);
+            const pos = this.graph3D.cameraPosition();
+            const dx = pos.x - pos.lookAt.x;
+            const dy = pos.y - pos.lookAt.y;
+            const dz = pos.z - pos.lookAt.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            const newDist = Math.max(dist * 0.7, 50);
+            
+            this.graph3D.cameraPosition({
+                x: pos.lookAt.x + dx * newDist / dist,
+                y: pos.lookAt.y + dy * newDist / dist,
+                z: pos.lookAt.z + dz * newDist / dist,
+                lookAt: pos.lookAt
+            }, 300);
+            
+            const zoomPercent = Math.round((newDist > 0 ? (1 / (newDist / 200)) * 100 : 100));
+            this.showToast(`放大`);
         } else if (this.graph2D) {
             this.showToast('2D 模式请使用鼠标滚轮缩放');
         }
     }
 
     zoomOut() {
+        if (!this.graph3D && !this.graph2D) {
+            this.showToast('请先搜索并生成图表');
+            return;
+        }
+
         if (this.currentVizMode === '3d' && this.graph3D) {
-            const currentZoom = this.graph3D.zoom();
-            const newZoom = Math.max(currentZoom * 0.7, 0.1);
-            this.graph3D.zoom(newZoom, 300);
-            this.showToast(`缩小: ${(newZoom * 100).toFixed(0)}%`);
+            const pos = this.graph3D.cameraPosition();
+            const dx = pos.x - pos.lookAt.x;
+            const dy = pos.y - pos.lookAt.y;
+            const dz = pos.z - pos.lookAt.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            const newDist = Math.min(dist * 1.4, 2000);
+            
+            this.graph3D.cameraPosition({
+                x: pos.lookAt.x + dx * newDist / dist,
+                y: pos.lookAt.y + dy * newDist / dist,
+                z: pos.lookAt.z + dz * newDist / dist,
+                lookAt: pos.lookAt
+            }, 300);
+            
+            this.showToast(`缩小`);
         }
     }
 
     resetView() {
+        if (!this.graph3D && !this.graph2D) {
+            this.showToast('请先搜索并生成图表');
+            return;
+        }
+
         if (this.currentVizMode === '3d' && this.graph3D) {
             this.graph3D.zoomToFit(400, 40);
             this.showToast('视图已重置');
