@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GapSight - 跨学科知识盲区探测工具</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.70.12/dist/3d-force-graph.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <h1>GapSight</h1>
+                <span class="subtitle">跨学科知识盲区探测工具</span>
+            </div>
+            <div class="header-actions">
+                <button id="settings-btn" class="btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    设置
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="sidebar">
+                <div class="search-section">
+                    <h2>关键词搜索</h2>
+                    <div class="form-group">
+                        <label for="keyword1">关键词 1</label>
+                        <input type="text" id="keyword1" placeholder="输入第一个关键词" value="machine learning">
+                    </div>
+                    <div class="form-group">
+                        <label for="keyword2">关键词 2 (可选)</label>
+                        <input type="text" id="keyword2" placeholder="输入第二个关键词">
+                    </div>
+                    
+                    <div class="advanced-options">
+                        <button type="button" id="toggle-advanced" class="btn-text">
+                            高级选项 ▼
+                        </button>
+                        <div id="advanced-panel" class="advanced-panel hidden">
+                            <div class="form-group">
+                                <label for="max-papers">论文数量</label>
+                                <input type="number" id="max-papers" min="10" max="100" value="50">
+                            </div>
+                            <div class="form-group">
+                                <label for="years-back">回溯年数</label>
+                                <input type="number" id="years-back" min="1" max="10" value="5">
+                            </div>
+                            <div class="form-group">
+                                <label for="viz-mode">可视化模式</label>
+                                <select id="viz-mode">
+                                    <option value="3d">3D 力导向图</option>
+                                    <option value="2d">2D 力导向图</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="search-btn" class="btn-primary btn-large">
+                        <span class="btn-text">开始分析</span>
+                        <span class="btn-loading hidden">分析中...</span>
+                    </button>
+                </div>
+
+                <div id="stats-section" class="stats-section hidden">
+                    <h3>分析统计</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="stat-papers">0</span>
+                            <span class="stat-label">论文</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="stat-entities">0</span>
+                            <span class="stat-label">学术实体</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="stat-gaps">0</span>
+                            <span class="stat-label">知识盲区</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="gap-section" class="gap-section hidden">
+                    <h3>检测到的知识盲区</h3>
+                    <div id="gap-list" class="gap-list">
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>使用说明</h3>
+                    <ul>
+                        <li>输入 1-2 个关键词开始分析</li>
+                        <li>系统自动抓取相关学术论文</li>
+                        <li>提取核心学术实体构建共现网络</li>
+                        <li>通过结构洞算法探测知识盲区</li>
+                        <li>点击高亮连接线查看研究建议</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <section class="visualization-area">
+                <div id="welcome-screen" class="welcome-screen">
+                    <div class="welcome-content">
+                        <div class="welcome-icon">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <line x1="12" y1="2" x2="12" y2="6"></line>
+                                <line x1="12" y1="18" x2="12" y2="22"></line>
+                                <line x1="4.22" y1="4.22" x2="7.05" y2="7.05"></line>
+                                <line x1="16.95" y1="16.95" x2="19.78" y2="19.78"></line>
+                                <line x1="2" y1="12" x2="6" y2="12"></line>
+                                <line x1="18" y1="12" x2="22" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="7.05" y2="16.95"></line>
+                                <line x1="16.95" y1="7.05" x2="19.78" y2="4.22"></line>
+                            </svg>
+                        </div>
+                        <h2>欢迎使用 GapSight</h2>
+                        <p>利用文献共现网络与结构洞算法<br>自动探测跨学科知识盲区</p>
+                        <div class="feature-list">
+                            <div class="feature">
+                                <span class="feature-icon">📚</span>
+                                <span>Semantic Scholar 文献检索</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-icon">🔬</span>
+                                <span>scispaCy 实体提取</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-icon">🕸️</span>
+                                <span>NetworkX 网络分析</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-icon">💡</span>
+                                <span>结构洞算法探测创新点</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="graph-container" class="graph-container hidden">
+                    <div class="graph-toolbar">
+                        <div class="toolbar-left">
+                            <button id="zoom-in" class="btn-icon" title="放大">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="11" y1="8" x2="11" y2="14"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
+                            </button>
+                            <button id="zoom-out" class="btn-icon" title="缩小">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
+                            </button>
+                            <button id="reset-view" class="btn-icon" title="重置视图">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="1 4 1 10 7 10"></polyline>
+                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                                </svg>
+                            </button>
+                            <div class="separator"></div>
+                            <button id="toggle-rotation" class="btn-icon active" title="自动旋转">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="toolbar-right">
+                            <span class="graph-info" id="graph-info">
+                                节点: 0 | 边: 0
+                            </span>
+                        </div>
+                    </div>
+                    <div id="graph-3d" class="graph-viewport"></div>
+                    <div id="graph-2d" class="graph-viewport hidden">
+                        <svg id="svg-2d" width="100%" height="100%"></svg>
+                    </div>
+                </div>
+
+                <div id="node-panel" class="node-panel hidden">
+                    <div class="panel-header">
+                        <h4 id="panel-title">节点详情</h4>
+                        <button id="close-panel" class="btn-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="panel-content" id="panel-content">
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>设置</h3>
+                <button id="close-settings" class="btn-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="api-key">Semantic Scholar API Key (可选)</label>
+                    <input type="password" id="api-key" placeholder="输入 API Key（留空使用公共接口）">
+                    <p class="help-text">
+                        免费获取 API Key: 
+                        <a href="https://www.semanticscholar.org/product/api" target="_blank">semanticscholar.org/product/api</a>
+                    </p>
+                    <p class="help-text">
+                        不使用 API Key 时，将使用公共速率限制（1000 请求/秒，所有用户共享）
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-settings" class="btn-primary">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="prompt-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="prompt-title">研究空白分析</h3>
+                <button id="close-prompt" class="btn-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="prompt-content" class="prompt-content">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="copy-prompt" class="btn-secondary">复制提示词</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden">
+        <span id="toast-message"></span>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
